@@ -17,18 +17,23 @@ import {
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
+import { verifyUser } from "../Api/userApi";
 
 const UserOtpverification = () => {
   const router = useRouter();
-  const { email } = useLocalSearchParams();
+  const searchParams = useLocalSearchParams();
+  const email = searchParams.email ? String(searchParams.email).trim() : "";
+  const username = searchParams.username ? String(searchParams.username).trim() : "";
   const [otp, setOtp] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [verifiedUserData, setVerifiedUserData] = useState(null);
 
   const handleVerifyOtp = async () => {
-    if (!email) {
+    const cleanEmail = email ? String(email).trim() : "";
+    if (!cleanEmail) {
       setErrorMessage("Email address is missing. Please try signing up again.");
       setShowErrorModal(true);
       return;
@@ -40,18 +45,38 @@ const UserOtpverification = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const res = await verifyUser(cleanEmail, otp.trim());
+      setVerifiedUserData(res?.user || null);
       setShowSuccessModal(true);
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleModalClose = () => {
     setShowSuccessModal(false);
-    router.replace({
-      pathname: "/Buyer/Authentication/ProfileSetupScreen",
-      params: { email: email ? String(email).trim() : "" },
-    });
+    const cleanEmail = email ? String(email).trim() : "";
+    const cleanUsername = verifiedUserData?.username || username || (cleanEmail ? cleanEmail.split("@")[0] : "");
+
+    if (verifiedUserData?.isProfileCompleted) {
+      if (verifiedUserData.activeRole === "seller") {
+        router.replace("/Seller/Screens/DashboardScreen");
+      } else {
+        router.replace("/Buyer/Screens/HomeScreen");
+      }
+    } else {
+      router.replace({
+        pathname: "/Buyer/Authentication/ProfileSetupScreen",
+        params: {
+          email: cleanEmail,
+          username: cleanUsername,
+        },
+      });
+    }
   };
 
   return (
@@ -62,7 +87,6 @@ const UserOtpverification = () => {
         enableOnAndroid={true}
         extraScrollHeight={20}
       >
-        {/* Header Back Button */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -77,7 +101,6 @@ const UserOtpverification = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Title Area */}
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>Verify OTP</Text>
           <Text style={styles.subtitleText}>
@@ -86,7 +109,6 @@ const UserOtpverification = () => {
           </Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Verification Code (OTP)</Text>
@@ -102,7 +124,6 @@ const UserOtpverification = () => {
           </View>
         </View>
 
-        {/* Primary Action Button */}
         <TouchableOpacity
           style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
           onPress={handleVerifyOtp}
@@ -115,7 +136,6 @@ const UserOtpverification = () => {
         </TouchableOpacity>
       </KeyboardAwareScrollView>
 
-      {/* Success Modal */}
       <Modal
         visible={showSuccessModal}
         transparent={true}
@@ -144,7 +164,6 @@ const UserOtpverification = () => {
         </View>
       </Modal>
 
-      {/* Error Modal */}
       <Modal
         visible={showErrorModal}
         transparent={true}
@@ -181,7 +200,7 @@ export default UserOtpverification;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,

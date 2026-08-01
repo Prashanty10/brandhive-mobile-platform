@@ -20,33 +20,91 @@ import {
 } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
 import * as ImagePicker from "expo-image-picker";
+import { profileSetupApi, userInfo } from "../Api/userApi";
+import { detectUserLocation } from "../Utils/locationHelper";
 
 const ProfileSetupScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [first_name, setName] = useState("Ethan");
-  const [last_name, setLastName] = useState("Miller");
-  const [mobileNumber, setMobileNumber] = useState("9876543210");
-  const [username, setUsername] = useState(params.username || "ethan_m");
-  const [email, setEmail] = useState(params.email || "ethan@brandhive.com");
-  const [city, setCity] = useState("New York");
-  const [state, setState] = useState("NY");
-  const [bio, setBio] = useState("Marketing enthusiast & brand manager.");
+
+  const initialEmail = params.email ? String(params.email).trim() : "";
+  const initialUsername = params.username
+    ? String(params.username).trim()
+    : initialEmail
+    ? initialEmail.split("@")[0]
+    : "";
+
+  const [first_name, setName] = useState("");
+  const [last_name, setLastName] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [username, setUsername] = useState(initialUsername);
+  const [email, setEmail] = useState(initialEmail);
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [locationCoords, setLocationCoords] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [completedActiveRole, setCompletedActiveRole] = useState("buyer");
+
+  useEffect(() => {
+    const rawEmail = params.email ? String(params.email).trim() : "";
+    const rawUsername = params.username
+      ? String(params.username).trim()
+      : rawEmail
+      ? rawEmail.split("@")[0]
+      : "";
+
+    if (rawUsername) setUsername(rawUsername);
+    if (rawEmail) setEmail(rawEmail);
+
+    const loadUserData = async () => {
+      try {
+        const res = await userInfo();
+        if (res?.user) {
+          const u = res.user;
+          const uName =
+            u.username || rawUsername || (u.email ? u.email.split("@")[0] : "");
+          if (uName) setUsername(uName);
+          if (u.email) setEmail(u.email);
+          if (u.firstName) setName(u.firstName);
+          if (u.lastName) setLastName(u.lastName);
+          if (u.mobileNumber) setMobileNumber(u.mobileNumber);
+          if (u.city) setCity(u.city);
+          if (u.state) setState(u.state);
+          if (u.bio) setBio(u.bio);
+          if (u.profileImage) setProfileImage(u.profileImage);
+          if (u.activeRole) setCompletedActiveRole(u.activeRole);
+        }
+      } catch (e) {
+        if (rawEmail) {
+          setUsername(rawEmail.split("@")[0]);
+        }
+      }
+    };
+    loadUserData();
+  }, [params.username, params.email]);
 
   const handleGetLocation = async () => {
     setIsLocating(true);
-    setTimeout(() => {
-      setCity("New York");
-      setState("NY");
+    try {
+      const loc = await detectUserLocation();
+      if (loc.success) {
+        if (loc.city) setCity(loc.city);
+        if (loc.state) setState(loc.state);
+      } else if (loc.message) {
+        setErrorMessage(loc.message);
+        setShowErrorModal(true);
+      }
+    } catch (e) {
+      setErrorMessage("Failed to detect location.");
+      setShowErrorModal(true);
+    } finally {
       setIsLocating(false);
-    }, 600);
+    }
   };
 
   useEffect(() => {
@@ -60,13 +118,11 @@ const ProfileSetupScreen = () => {
 
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
-      onBackPress
+      onBackPress,
     );
 
     return () => subscription.remove();
   }, [router]);
-
-  const [completedActiveRole, setCompletedActiveRole] = useState("buyer");
 
   const handleProceedAfterProfile = () => {
     setShowSuccessModal(false);
@@ -83,21 +139,25 @@ const ProfileSetupScreen = () => {
       setShowErrorModal(true);
       return;
     }
+
     if (!last_name.trim()) {
       setErrorMessage("Please enter your last name.");
       setShowErrorModal(true);
       return;
     }
+
     if (mobileNumber.trim() && mobileNumber.trim().length !== 10) {
       setErrorMessage("Mobile number must be exactly 10 digits.");
       setShowErrorModal(true);
       return;
     }
+
     if (!city.trim()) {
       setErrorMessage("Please enter your city.");
       setShowErrorModal(true);
       return;
     }
+
     if (!state.trim()) {
       setErrorMessage("Please enter your state.");
       setShowErrorModal(true);
@@ -105,13 +165,31 @@ const ProfileSetupScreen = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const res = await profileSetupApi({
+        firstName: first_name.trim(),
+        lastName: last_name.trim(),
+        mobileNumber: mobileNumber.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        bio: bio.trim(),
+        profileImage,
+      });
+
+      const user = res?.user || {};
+      if (user.activeRole) {
+        setCompletedActiveRole(user.activeRole);
+      }
+
       setShowSuccessModal(true);
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-
 
   const handleSelectAvatar = async () => {
     Alert.alert("Select Image", "Choose image source", [
@@ -145,7 +223,7 @@ const ProfileSetupScreen = () => {
             quality: 0.7,
           })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
+            mediaTypes: ["images"],
             allowsEditing: true,
             quality: 0.7,
           });
@@ -164,7 +242,6 @@ const ProfileSetupScreen = () => {
         enableOnAndroid={true}
         extraScrollHeight={20}
       >
-        {/* Header Back Button */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => {
@@ -185,16 +262,13 @@ const ProfileSetupScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Title Area */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>Profile Setup</Text>
+          <Text style={styles.titleText}>Setup Profile</Text>
           <Text style={styles.subtitleText}>
-            Complete your profile details to personalize your experience on
-            BrandHive.
+            Personalize your BrandHive experience by completing your profile.
           </Text>
         </View>
 
-        {/* Avatar Container */}
         <TouchableOpacity
           style={styles.avatarContainer}
           onPress={handleSelectAvatar}
@@ -202,7 +276,10 @@ const ProfileSetupScreen = () => {
         >
           <View style={styles.avatarInner}>
             {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.avatarImage}
+              />
             ) : (
               <Ionicons
                 name="camera-outline"
@@ -216,35 +293,31 @@ const ProfileSetupScreen = () => {
           </View>
         </TouchableOpacity>
 
-        {/* Form */}
-        <View style={styles.form}>
-          {/* First Name Input */}
+        <View style={styles.formCard}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>First Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ethan"
-              placeholderTextColor={colors.textSecondary}
+              placeholder="First Name"
+              placeholderTextColor={colors.textMuted}
               value={first_name}
               onChangeText={setName}
               autoCapitalize="words"
             />
           </View>
 
-          {/* Last Name Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Last Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Miller"
-              placeholderTextColor={colors.textSecondary}
+              placeholder="Last Name"
+              placeholderTextColor={colors.textMuted}
               value={last_name}
               onChangeText={setLastName}
               autoCapitalize="words"
             />
           </View>
 
-          {/* Mobile Number Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mobile Number</Text>
             <View style={styles.inputWrapper}>
@@ -254,13 +327,20 @@ const ProfileSetupScreen = () => {
                 color={colors.textSecondary}
                 style={styles.inputIcon}
               />
-              <Text style={{ fontSize: wp("3.8%"), color: colors.textPrimary, fontWeight: "600", marginRight: wp("2%") }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.textPrimary,
+                  fontWeight: "600",
+                  marginRight: wp("2%"),
+                }}
+              >
                 +91
               </Text>
               <TextInput
                 style={styles.inputWithIcon}
-                placeholder="9876543210"
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Mobile Number"
+                placeholderTextColor={colors.textMuted}
                 value={mobileNumber}
                 onChangeText={(text) => {
                   const cleaned = text.replace(/[^0-9]/g, "");
@@ -274,25 +354,23 @@ const ProfileSetupScreen = () => {
             </View>
           </View>
 
-          {/* Username Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <TextInput
-              style={styles.input}
-              placeholder="ethan_miller_007"
-              placeholderTextColor={colors.textSecondary}
+              style={[styles.input, styles.readOnlyInput]}
+              placeholder="Username"
+              placeholderTextColor={colors.textMuted}
               value={username}
               editable={false}
             />
           </View>
 
-          {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email Address</Text>
             <TextInput
-              style={styles.input}
-              placeholder="ethan_miller007@gmail.com"
-              placeholderTextColor={colors.textSecondary}
+              style={[styles.input, styles.readOnlyInput]}
+              placeholder="Email Address"
+              placeholderTextColor={colors.textMuted}
               value={email}
               editable={false}
               keyboardType="email-address"
@@ -300,12 +378,28 @@ const ProfileSetupScreen = () => {
             />
           </View>
 
-          {/* City Input */}
           <View style={styles.inputGroup}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: hp("1%") }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: hp("1%"),
+              }}
+            >
               <Text style={[styles.label, { marginBottom: 0 }]}>City</Text>
-              <TouchableOpacity onPress={() => handleGetLocation(true)} disabled={isLocating} activeOpacity={0.7}>
-                <Text style={{ fontSize: wp("3.2%"), color: colors.primary, fontWeight: "600" }}>
+              <TouchableOpacity
+                onPress={() => handleGetLocation()}
+                disabled={isLocating}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.primary,
+                    fontWeight: "600",
+                  }}
+                >
                   {isLocating ? "Detecting..." : "Detect Location"}
                 </Text>
               </TouchableOpacity>
@@ -320,7 +414,7 @@ const ProfileSetupScreen = () => {
               <TextInput
                 style={styles.inputWithIcon}
                 placeholder="Enter city..."
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textMuted}
                 value={city}
                 onChangeText={setCity}
                 autoCapitalize="words"
@@ -328,7 +422,6 @@ const ProfileSetupScreen = () => {
             </View>
           </View>
 
-          {/* State Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>State</Text>
             <View style={styles.inputWrapper}>
@@ -341,7 +434,7 @@ const ProfileSetupScreen = () => {
               <TextInput
                 style={styles.inputWithIcon}
                 placeholder="Enter state..."
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textMuted}
                 value={state}
                 onChangeText={setState}
                 autoCapitalize="words"
@@ -349,15 +442,14 @@ const ProfileSetupScreen = () => {
             </View>
           </View>
 
-          {/* Bio Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
               Bio <Text style={styles.optionalLabel}>(optional)</Text>
             </Text>
             <TextInput
               style={[styles.input, styles.bioInput]}
-              placeholder="Tell us about yourself..."
-              placeholderTextColor={colors.textSecondary}
+              placeholder="Tell us about your brand..."
+              placeholderTextColor={colors.textMuted}
               value={bio}
               onChangeText={setBio}
               multiline
@@ -367,20 +459,21 @@ const ProfileSetupScreen = () => {
           </View>
         </View>
 
-        {/* Primary Action Button */}
         <TouchableOpacity
-          style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
+          style={[
+            styles.actionButton,
+            isLoading && styles.actionButtonDisabled,
+          ]}
           onPress={handleSaveProfile}
           activeOpacity={0.9}
           disabled={isLoading}
         >
           <Text style={styles.actionButtonText}>
-            {isLoading ? "Saving Profile..." : "Complete & Go to Home"}
+            {isLoading ? "Complete Profile..." : "Complete Profile"}
           </Text>
         </TouchableOpacity>
       </KeyboardAwareScrollView>
 
-      {/* Error Modal */}
       <Modal
         visible={showErrorModal}
         transparent={true}
@@ -396,7 +489,7 @@ const ProfileSetupScreen = () => {
                 color={colors.error}
               />
             </View>
-            <Text style={styles.errorModalTitle}>Required Field</Text>
+            <Text style={styles.errorModalTitle}>Validation Error</Text>
             <Text style={styles.errorModalMessage}>{errorMessage}</Text>
             <TouchableOpacity
               style={styles.errorModalButton}
@@ -409,7 +502,6 @@ const ProfileSetupScreen = () => {
         </View>
       </Modal>
 
-      {/* Success Modal */}
       <Modal
         visible={showSuccessModal}
         transparent={true}
@@ -426,9 +518,14 @@ const ProfileSetupScreen = () => {
               />
             </View>
             <Text style={styles.errorModalTitle}>Success</Text>
-            <Text style={styles.errorModalMessage}>Profile updated successfully!</Text>
+            <Text style={styles.errorModalMessage}>
+              Profile completed successfully!
+            </Text>
             <TouchableOpacity
-              style={[styles.errorModalButton, { backgroundColor: colors.success }]}
+              style={[
+                styles.errorModalButton,
+                { backgroundColor: colors.success },
+              ]}
               onPress={handleProceedAfterProfile}
               activeOpacity={0.8}
             >
@@ -446,11 +543,11 @@ export default ProfileSetupScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: wp("6%"),
+    paddingHorizontal: wp("5.5%"),
     paddingBottom: hp("4%"),
   },
   header: {
@@ -467,38 +564,39 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
   },
   titleContainer: {
-    marginTop: hp("2%"),
+    marginTop: hp("1.5%"),
     alignItems: "center",
     marginBottom: hp("2.5%"),
   },
   titleText: {
-    fontSize: wp("7.5%"),
+    fontSize: 28,
     fontWeight: "700",
     color: colors.textPrimary,
     textAlign: "center",
-    marginBottom: hp("1%"),
+    letterSpacing: -0.6,
+    marginBottom: hp("0.8%"),
   },
   subtitleText: {
-    fontSize: wp("3.6%"),
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: wp("5.2%"),
+    lineHeight: 20,
     paddingHorizontal: wp("4%"),
   },
   avatarContainer: {
     alignSelf: "center",
-    marginTop: hp("1%"),
+    marginTop: hp("0.5%"),
     marginBottom: hp("3%"),
     position: "relative",
   },
   avatarInner: {
-    width: wp("24%"),
-    height: wp("24%"),
-    borderRadius: wp("12%"),
-    backgroundColor: colors.inputBg,
+    width: wp("22%"),
+    height: wp("22%"),
+    borderRadius: wp("11%"),
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     justifyContent: "center",
@@ -514,47 +612,61 @@ const styles = StyleSheet.create({
     bottom: wp("0.5%"),
     right: wp("0.5%"),
     backgroundColor: colors.primary,
-    width: wp("6.5%"),
-    height: wp("6.5%"),
-    borderRadius: wp("3.25%"),
+    width: wp("6%"),
+    height: wp("6%"),
+    borderRadius: wp("3%"),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: colors.surface,
   },
-  form: {
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: wp(4.5),
     marginBottom: hp("3%"),
+    shadowColor: colors.textPrimary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   inputGroup: {
-    marginBottom: hp("2.5%"),
+    marginBottom: hp("2.2%"),
   },
   label: {
-    fontSize: wp("3.6%"),
+    fontSize: 14,
     fontWeight: "600",
-    color: colors.black,
-    marginBottom: hp("1%"),
+    color: colors.textPrimary,
+    marginBottom: hp("0.8%"),
   },
   optionalLabel: {
-    fontSize: wp("3.2%"),
+    fontSize: 13,
     fontWeight: "400",
     color: colors.textSecondary,
   },
   input: {
-    height: hp("6%"),
-    borderRadius: wp("6%"),
-    backgroundColor: colors.inputBg,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: wp("5%"),
-    fontSize: wp("3.8%"),
+    paddingHorizontal: wp("4%"),
+    fontSize: 15,
     color: colors.textPrimary,
+  },
+  readOnlyInput: {
+    backgroundColor: colors.background,
+    color: colors.textSecondary,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    height: hp("6%"),
-    borderRadius: wp("6%"),
-    backgroundColor: colors.inputBg,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: wp("4%"),
@@ -565,59 +677,32 @@ const styles = StyleSheet.create({
   inputWithIcon: {
     flex: 1,
     height: "100%",
-    fontSize: wp("3.8%"),
+    fontSize: 15,
     color: colors.textPrimary,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: wp("2%"),
-    marginTop: hp("1.2%"),
-  },
-  chip: {
-    paddingHorizontal: wp("3.5%"),
-    paddingVertical: hp("0.8%"),
-    borderRadius: wp("4%"),
-    backgroundColor: colors.inputBg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  activeChip: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: wp("3.2%"),
-    color: colors.textSecondary,
-    fontWeight: "500",
-  },
-  activeChipText: {
-    color: colors.white,
-    fontWeight: "600",
   },
   bioInput: {
     height: hp("11%"),
-    borderRadius: wp("4%"),
+    borderRadius: 16,
     paddingVertical: hp("1.5%"),
-    paddingHorizontal: wp("5%"),
+    paddingHorizontal: wp("4%"),
   },
   actionButton: {
-    height: hp("6.5%"),
-    borderRadius: wp("6.5%"),
-    backgroundColor: colors.button,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: colors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: hp("3%"),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 3,
   },
   actionButtonText: {
     color: colors.white,
-    fontSize: wp("4%"),
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "600",
   },
   actionButtonDisabled: {
     opacity: 0.7,
@@ -631,8 +716,8 @@ const styles = StyleSheet.create({
   },
   errorModalContent: {
     width: wp("80%"),
-    backgroundColor: colors.white,
-    borderRadius: wp("5%"),
+    backgroundColor: colors.surface,
+    borderRadius: 20,
     paddingVertical: hp("3%"),
     paddingHorizontal: wp("5%"),
     alignItems: "center",
@@ -648,30 +733,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorModalTitle: {
-    fontSize: wp("5%"),
+    fontSize: 18,
     fontWeight: "700",
     color: colors.textPrimary,
     marginBottom: hp("1%"),
     textAlign: "center",
   },
   errorModalMessage: {
-    fontSize: wp("3.6%"),
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: wp("5%"),
+    lineHeight: 20,
     marginBottom: hp("2.5%"),
   },
   errorModalButton: {
     width: "100%",
-    height: hp("5.5%"),
-    borderRadius: wp("5.5%"),
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.error,
     justifyContent: "center",
     alignItems: "center",
   },
   errorModalButtonText: {
     color: colors.white,
-    fontSize: wp("3.8%"),
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

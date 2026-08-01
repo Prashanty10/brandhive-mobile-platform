@@ -16,7 +16,7 @@ import uploadToCloudinary from "../Utils/cloudinary.js";
 
 export const LoginHandler = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password , role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -282,9 +282,16 @@ export const RegisterHandler = async (req, res) => {
   } catch (error) {
     console.error("Register Error:", error);
 
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: error.message || "Internal Server Error",
     });
   }
 };

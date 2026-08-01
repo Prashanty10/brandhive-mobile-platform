@@ -18,7 +18,7 @@ import {
 } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
 import { useLocalSearchParams } from "expo-router";
-
+import { LoginApi } from "../Api/userApi";
 const LoginScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -42,7 +42,7 @@ const LoginScreen = () => {
 
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
-      onBackPress
+      onBackPress,
     );
 
     return () => subscription.remove();
@@ -72,200 +72,220 @@ const LoginScreen = () => {
     }
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      if (preferredRole === "seller") {
+    try {
+      const res = await LoginApi(email.trim(), password, preferredRole);
+
+      if (!res.isVerified) {
+        const fallbackUsername = res.user?.username || email.trim().split("@")[0];
+        router.replace({
+          pathname: "/Buyer/Authentication/UserOtpverification",
+          params: {
+            email: email.trim(),
+            username: fallbackUsername,
+          },
+        });
+        return;
+      }
+
+      if (!res.isProfileCompleted) {
+        const fallbackUsername = res.user?.username || email.trim().split("@")[0];
+        router.replace({
+          pathname: "/Buyer/Authentication/ProfileSetupScreen",
+          params: {
+            email: email.trim(),
+            username: fallbackUsername,
+          },
+        });
+        return;
+      }
+
+      const userRole = res.user?.activeRole || preferredRole;
+      if (userRole === "seller") {
         router.replace("/Seller/Screens/DashboardScreen");
       } else {
         router.replace("/Buyer/Screens/HomeScreen");
       }
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAwareScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        enableOnAndroid={true}
-        extraScrollHeight={20}
-      >
-        {/* Header Back Button */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace("/Buyer/Authentication/RoleSelectionScreen");
-              }
-            }}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={wp("5%")}
-              color={colors.textPrimary}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Title Area */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>Welcome Back</Text>
-          <Text style={styles.subtitleText}>
-            Stay connected by signing in with your email and password to access
-            your account.
-          </Text>
-        </View>
-
-        {/* Social Buttons */}
-        <View style={styles.socialRow}>
-          <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-            <Ionicons
-              name="logo-google"
-              size={wp("5%")}
-              color="#5954ed"
-              style={styles.socialIcon}
-            />
-            <Text style={styles.socialButtonText}>Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-            <Ionicons
-              name="logo-apple"
-              size={wp("5%")}
-              color="#000000"
-              style={styles.socialIcon}
-            />
-            <Text style={styles.socialButtonText}>Apple</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          {/* Email Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="prashant@gmail.com"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          {/* Password Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordWrapper}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="••••••••••••"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={secureText}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setSecureText(!secureText)}
-                style={styles.eyeButton}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={secureText ? "eye-off-outline" : "eye-outline"}
-                  size={wp("5%")}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Forgot Password */}
-          <View style={styles.rowBetween}>
-            <TouchableOpacity
-              onPress={() => router.push("/Buyer/Authentication/ResetPasswordScreen")}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Primary Action Button */}
+return (
+  <SafeAreaView style={styles.container}>
+    <KeyboardAwareScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+      enableOnAndroid={true}
+      extraScrollHeight={20}
+    >
+      <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
-          onPress={handleSignIn}
-          activeOpacity={0.9}
-          disabled={isLoading}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/Buyer/Authentication/RoleSelectionScreen");
+            }
+          }}
+          style={styles.backButton}
+          activeOpacity={0.7}
         >
-          <Text style={styles.signInButtonText}>
-            {isLoading ? "Signing In..." : "Sign In"}
-          </Text>
+          <Ionicons
+            name="arrow-back"
+            size={wp("5%")}
+            color={colors.textPrimary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.titleContainer}>
+        <Text style={styles.titleText}>Welcome Back</Text>
+        <Text style={styles.subtitleText}>
+          Stay connected by signing in with your email and password to access
+          your account.
+        </Text>
+      </View>
+
+      <View style={styles.socialRow}>
+        <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+          <Ionicons
+            name="logo-google"
+            size={wp("5%")}
+            color="#5954ed"
+            style={styles.socialIcon}
+          />
+          <Text style={styles.socialButtonText}>Google</Text>
         </TouchableOpacity>
 
-        {/* Footer Text */}
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
-          <TouchableOpacity
-            onPress={() => router.push("/Buyer/Authentication/RegisterScreen")}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.signUpText}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAwareScrollView>
+        <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+          <Ionicons
+            name="logo-apple"
+            size={wp("5%")}
+            color="#000000"
+            style={styles.socialIcon}
+          />
+          <Text style={styles.socialButtonText}>Apple</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Error Modal */}
-      <Modal
-        visible={showErrorModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowErrorModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.errorModalContent}>
-            <View style={styles.errorIconContainer}>
-              <Ionicons
-                name="alert-circle"
-                size={wp("14%")}
-                color={colors.error}
-              />
-            </View>
-            <Text style={styles.errorModalTitle}>Sign In Error</Text>
-            <Text style={styles.errorModalMessage}>{errorMessage}</Text>
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <View style={styles.form}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="prashant@gmail.com"
+            placeholderTextColor={colors.textSecondary}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.passwordWrapper}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="••••••••••••"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={secureText}
+              autoCapitalize="none"
+            />
             <TouchableOpacity
-              style={styles.errorModalButton}
-              onPress={() => setShowErrorModal(false)}
-              activeOpacity={0.8}
+              onPress={() => setSecureText(!secureText)}
+              style={styles.eyeButton}
+              activeOpacity={0.7}
             >
-              <Text style={styles.errorModalButtonText}>Okay</Text>
+              <Ionicons
+                name={secureText ? "eye-off-outline" : "eye-outline"}
+                size={wp("5%")}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
-  );
-};
 
+        <View style={styles.rowBetween}>
+          <TouchableOpacity
+            onPress={() =>
+              router.push("/Buyer/Authentication/ResetPasswordScreen")
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.signInButton, isLoading && styles.signInButtonDisabled]}
+        onPress={handleSignIn}
+        activeOpacity={0.9}
+        disabled={isLoading}
+      >
+        <Text style={styles.signInButtonText}>
+          {isLoading ? "Signing In..." : "Sign In"}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={styles.footerRow}>
+        <Text style={styles.footerText}>{"Don't have an account? "}</Text>
+        <TouchableOpacity
+          onPress={() => router.push("/Buyer/Authentication/RegisterScreen")}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.signUpText}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAwareScrollView>
+
+    <Modal
+      visible={showErrorModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowErrorModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.errorModalContent}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons
+              name="alert-circle"
+              size={wp("14%")}
+              color={colors.error}
+            />
+          </View>
+          <Text style={styles.errorModalTitle}>Sign In Error</Text>
+          <Text style={styles.errorModalMessage}>{errorMessage}</Text>
+          <TouchableOpacity
+            style={styles.errorModalButton}
+            onPress={() => setShowErrorModal(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.errorModalButtonText}>Okay</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  </SafeAreaView>
+)};
 export default LoginScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,

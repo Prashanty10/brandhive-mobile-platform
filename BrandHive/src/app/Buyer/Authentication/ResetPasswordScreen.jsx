@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
+import { forgotPasswordApi, verifyOtp } from "../Api/userApi";
 
 const ResetPasswordScreen = () => {
   const router = useRouter();
@@ -37,10 +38,15 @@ const ResetPasswordScreen = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await forgotPasswordApi(email.trim());
       setOtpSent(true);
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyOtp = async () => {
@@ -56,10 +62,15 @@ const ResetPasswordScreen = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await verifyOtp(email.trim(), otp.trim());
       router.replace("/Buyer/Authentication/NewPasswordScreen");
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -197,7 +208,7 @@ export default ResetPasswordScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -267,8 +278,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   disabledInput: {
-    backgroundColor: "#F2F2F2",
-    color: "#A3A3A3",
+    backgroundColor: colors.divider,
+    color: colors.textMuted,
   },
   actionButton: {
     height: hp("6.5%"),

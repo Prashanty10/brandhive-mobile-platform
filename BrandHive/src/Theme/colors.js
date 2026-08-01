@@ -1,35 +1,39 @@
 const colors = {
-  // 60% DOMINANT (Light / Clean Backgrounds, Cards, Borders)
-  background: "#F8FAFC",      // Slate 50: Very clean off-white screen backgrounds
-  card: "#FFFFFF",            // Pure White: Base surface for cards and containers
-  white: "#FFFFFF",           // Standard white
-  inputBg: "#F1F5F9",         // Slate 100: Input field background
-  border: "#E2E8F0",          // Slate 200: Soft border divider lines
-  lightGray: "#F8FAFC",       // Clean light gray helper
-  shadow: "rgba(15, 23, 42, 0.05)", // Soft slate-900 shadow
-  overlay: "rgba(15, 23, 42, 0.4)",  // Muted dark backdrop overlay
-  
-  // 30% SECONDARY (Deep Slate / Dark text, icons & structures)
-  textPrimary: "#0F172A",     // Slate 900: High-contrast title and body text
-  textSecondary: "#64748B",   // Slate 500: Medium-contrast subtitles and labels
-  textMuted: "#94A3B8",       // Slate 400: Lighter muted text / placeholders
-  iconPrimary: "#0F172A",     // Slate 900: Active or main icons
-  iconSecondary: "#64748B",   // Slate 500: Inactive or secondary icons
-  structureDark: "#151515",   // Slate 900: Bottom navbar background & dark theme wrappers
-  buttonSecondary: "#1E293B", // Slate 800: Secondary buttons and action fields
-  darkGray: "#344054",        // Charcoal gray for minor dark badges
+  // 60% DOMINANT CANVAS & SURFACES — Black & White Luxury Palette
+  background: "#F7F7F5",      // Warm Off-White Apple-style Canvas
+  surface: "#FFFFFF",         // Pure White Cards & Surfaces
+  card: "#FFFFFF",            // Pure White Card Container
+  white: "#FFFFFF",           // Pure White
+  black: "#000000",           // Pure Black
+  inputBg: "#FFFFFF",         // Clean White Input Surface
+  border: "#E5E7EB",          // Soft 1px Border
+  divider: "#F3F4F6",         // Very Soft Section Divider
+  lightGray: "#F9FAFB",       // Soft Neutral Gray Helper
+  neutralLight: "#F0F0F0",    // Light Neutral Gray (replaces blue tints)
+  shadow: "rgba(17, 24, 39, 0.04)", // Soft Natural Apple Shadow
+  overlay: "rgba(17, 24, 39, 0.4)", // Subtle Backdrop Overlay
 
-  // 10% ACCENT (Vibrant Blue highlights & active states)
-  primary: "#3B82F6",         // Vibrant Electric Blue: Call to action buttons & active states
-  accent: "#3B82F6",          // Accent alias
-  accentLight: "#EFF6FF",     // Soft blue tint (Blue 50) for selected badge background
-  accentDark: "#155E75",      // Deeper blue for active borders
-  button: "#3B82F6",          // Main action trigger color
-  
-  // UTILITY / STATUS COLORS
-  success: "#10B981",         // Emerald 500: Success status
-  error: "#EF4444",           // Rose 500: Error/danger alert status
-  warning: "#F59E0B",         // Amber 500: Warning status
+  // 30% TYPOGRAPHY & SECONDARY NEUTRALS
+  textPrimary: "#111827",     // Slate 900: High-contrast Headings
+  textSecondary: "#6B7280",   // Slate 500: Medium-contrast Subtitles & Labels
+  textMuted: "#9CA3AF",       // Slate 400: Placeholders & Muted Captions
+  iconPrimary: "#111827",     // Primary Dark Icons
+  iconSecondary: "#9CA3AF",   // Inactive Tab & Helper Icons
+  navbar: "#FFFFFF",          // Bottom Navigation Bar
+  darkGray: "#374151",        // Neutral Dark Slate
+  charcoal: "#1C1C1E",        // Near-black Charcoal
+
+  // MINIMAL ACCENT — Use ONLY for primary interactive CTAs
+  primary: "#2563EB",         // Blue: Reserve for 1-2 primary action buttons only
+  primaryDark: "#1D4ED8",     // Dark Blue pressed state
+  accent: "#60A5FA",          // Light Blue (avoid decorative use)
+  accentLight: "#F0F0F0",     // Neutral Light Gray (was blue tint — now neutral)
+  button: "#111827",          // Primary Button: Near-Black (NOT blue)
+
+  // UTILITY & STATUS COLORS
+  success: "#22C55E",         // Success Status Green
+  warning: "#F59E0B",         // Warning Amber
+  error: "#EF4444",           // Error Red
 };
 
 export default colors;

@@ -18,7 +18,7 @@ import {
 } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
 import { useLocalSearchParams } from "expo-router";
-
+import { RegisterApi } from "../Api/userApi";
 const RegisterScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -45,7 +45,7 @@ const RegisterScreen = () => {
 
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
-      onBackPress
+      onBackPress,
     );
 
     return () => subscription.remove();
@@ -85,17 +85,32 @@ const RegisterScreen = () => {
     }
 
     setIsLoading(true);
+    try {
+      const res = await RegisterApi(username.trim(), email.trim(), password, initialRole);
 
-    setTimeout(() => {
+      if (res?.isVerified) {
+        if (!res.isProfileCompleted) {
+          router.replace({
+            pathname: "/Buyer/Authentication/ProfileSetupScreen",
+            params: { email: email.trim(), username: username.trim() },
+          });
+        } else if (initialRole === "seller") {
+          router.replace("/Seller/Screens/DashboardScreen");
+        } else {
+          router.replace("/Buyer/Screens/HomeScreen");
+        }
+      } else {
+        router.replace({
+          pathname: "/Buyer/Authentication/UserOtpverification",
+          params: { email: email.trim(), username: username.trim() },
+        });
+      }
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
       setIsLoading(false);
-      router.push({
-        pathname: "/Buyer/Authentication/UserOtpverification",
-        params: {
-          email: email.trim(),
-          role: role,
-        },
-      });
-    }, 500);
+    }
   };
 
   return (
@@ -118,7 +133,11 @@ const RegisterScreen = () => {
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={wp("5%")} color={colors.textPrimary} />
+            <Ionicons
+              name="arrow-back"
+              size={wp("5%")}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
         </View>
         <View style={styles.titleContainer}>
@@ -231,9 +250,11 @@ const RegisterScreen = () => {
             </View>
           </View>
         </View>
-        {/* Primary Action Button */}
         <TouchableOpacity
-          style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
+          style={[
+            styles.signUpButton,
+            isLoading && styles.signUpButtonDisabled,
+          ]}
           onPress={handleSignUp}
           activeOpacity={0.9}
           disabled={isLoading}
@@ -242,11 +263,15 @@ const RegisterScreen = () => {
             {isLoading ? "Creating Account..." : "Sign Up"}
           </Text>
         </TouchableOpacity>
-        {/* Footer Text */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account? </Text>
           <TouchableOpacity
-            onPress={() => router.push({ pathname: "/Buyer/Authentication/LoginScreen", params: { role } })}
+            onPress={() =>
+              router.push({
+                pathname: "/Buyer/Authentication/LoginScreen",
+                params: { role },
+              })
+            }
             activeOpacity={0.7}
           >
             <Text style={styles.signInText}>Sign In</Text>
@@ -254,7 +279,6 @@ const RegisterScreen = () => {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Error Modal */}
       <Modal
         visible={showErrorModal}
         transparent={true}

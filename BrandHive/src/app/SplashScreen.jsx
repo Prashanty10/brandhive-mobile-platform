@@ -5,6 +5,8 @@ import { widthPercentageToDP as wp } from "react-native-responsive-screen";
 import * as SecureStore from "expo-secure-store";
 import { useRouter } from "expo-router";
 import colors from "../Theme/colors";
+import axios from "axios";
+import { userInfo } from "./Buyer/Api/userApi";
 
 const SplashScreen = () => {
   const [showLoading, setShowLoading] = useState(false);
@@ -19,9 +21,74 @@ const SplashScreen = () => {
 
   const checkAuth = async () => {
     try {
-      router.replace("/Buyer/Authentication/RoleSelectionScreen");
+      let accessToken = await SecureStore.getItemAsync("accessToken");
+
+      if (!accessToken) {
+        const refreshToken = await SecureStore.getItemAsync("refreshToken");
+
+        if (!refreshToken) {
+          router.replace("/Buyer/Authentication/RoleSelectionScreen");
+          return;
+        }
+
+        try {
+          const res = await axios.post(
+            "http://10.221.22.24:3000/auth/refresh-token",
+            { refreshToken }
+          );
+
+          if (res.data?.accessToken) {
+            accessToken = res.data.accessToken;
+            await SecureStore.setItemAsync("accessToken", accessToken);
+          } else {
+            throw new Error("No access token returned");
+          }
+        } catch (refreshErr) {
+          await SecureStore.deleteItemAsync("accessToken");
+          await SecureStore.deleteItemAsync("refreshToken");
+          router.replace("/Buyer/Authentication/RoleSelectionScreen");
+          return;
+        }
+      }
+
+      try {
+        const userData = await userInfo();
+        const user = userData?.user;
+
+        if (!user) {
+          await SecureStore.deleteItemAsync("accessToken");
+          await SecureStore.deleteItemAsync("refreshToken");
+          router.replace("/Buyer/Authentication/RoleSelectionScreen");
+          return;
+        }
+
+        if (!user.isVerified) {
+          router.replace({
+            pathname: "/Buyer/Authentication/UserOtpverification",
+            params: { email: user.email, username: user.username },
+          });
+          return;
+        }
+
+        if (!user.isProfileCompleted) {
+          router.replace({
+            pathname: "/Buyer/Authentication/ProfileSetupScreen",
+            params: { email: user.email, username: user.username },
+          });
+          return;
+        }
+
+        if (user.activeRole === "seller") {
+          router.replace("/Seller/Screens/DashboardScreen");
+        } else {
+          router.replace("/Buyer/Screens/HomeScreen");
+        }
+      } catch (userErr) {
+        await SecureStore.deleteItemAsync("accessToken");
+        await SecureStore.deleteItemAsync("refreshToken");
+        router.replace("/Buyer/Authentication/RoleSelectionScreen");
+      }
     } catch (error) {
-      console.log("Splash Screen checkAuth Error:", error.message);
       router.replace("/Buyer/Authentication/RoleSelectionScreen");
     }
   };

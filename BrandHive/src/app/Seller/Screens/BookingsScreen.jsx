@@ -93,22 +93,19 @@ const BookingsScreen = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Pending":
-        return "#F97316";
-      case "Confirmed":
-        return "#0284C7";
-      case "Running":
-        return "#10B981";
-      case "Completed":
-        return "#64748B";
-      default:
-        return colors.textPrimary;
+      case "Pending": return "#F97316";
+      case "Confirmed": return "#0284C7";
+      case "Running": return "#10B981";
+      case "Completed": return "#64748B";
+      default: return colors.textPrimary;
     }
   };
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="calendar-outline" size={wp("12%")} color={colors.textMuted} />
+      <View style={styles.emptyIconBg}>
+        <Ionicons name="calendar-outline" size={28} color={colors.textMuted} />
+      </View>
       <Text style={styles.emptyTitle}>No bookings found</Text>
       <Text style={styles.emptySubtitle}>
         {`You don't have any ${activeTab.toLowerCase()} bookings at the moment.`}
@@ -119,31 +116,35 @@ const BookingsScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      
-      {/* Header */}
+
+      {/* ── Header ── */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Campaign Bookings</Text>
         <Text style={styles.headerSubtitle}>Review and manage advertising bookings</Text>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabBtn, isActive && styles.activeTabBtn]}
-              activeOpacity={0.8}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, isActive && styles.activeTabText]}>{tab}</Text>
-            </TouchableOpacity>
-          );
-        })}
+      {/* ── Tabs ── */}
+      <View style={styles.tabsWrapper}>
+        <View style={styles.tabsTrack}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabBtn, isActive && styles.activeTabBtn]}
+                activeOpacity={0.8}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
-      {/* Bookings List */}
+      {/* ── List ── */}
       <FlatList
         data={filteredBookings}
         keyExtractor={(item) => item.id}
@@ -152,25 +153,37 @@ const BookingsScreen = () => {
         ListEmptyComponent={renderEmptyState}
         renderItem={({ item }) => (
           <View style={styles.card}>
+            {/* Card Header */}
             <View style={styles.cardHeader}>
+              <View style={[styles.iconBlock, { backgroundColor: item.bgTint }]}>
+                <Ionicons name={item.icon} size={18} color={item.iconColor} />
+              </View>
               <View style={styles.buyerInfo}>
-                <Text style={styles.buyerLabel}>Buyer</Text>
+                <Text style={styles.buyerLabel}>BUYER</Text>
                 <Text style={styles.buyerName}>{item.buyerName}</Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}12` }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: `${getStatusColor(item.status)}14` },
+                ]}
+              >
+                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                  {item.status}
+                </Text>
               </View>
             </View>
 
             <View style={styles.divider} />
 
+            {/* Card Body */}
             <View style={styles.cardBody}>
-              <Text style={styles.adName}>{item.adName}</Text>
-              
-              <View style={styles.infoRow}>
-                <View style={[styles.iconWrapper, { backgroundColor: item.bgTint }]}>
-                  <Ionicons name={item.icon} size={14} color={item.iconColor} />
-                </View>
+              <Text style={styles.adName} numberOfLines={1}>
+                {item.adName}
+              </Text>
+
+              <View style={styles.categoryRow}>
+                <Ionicons name={item.icon} size={12} color={item.iconColor} />
                 <Text style={styles.categoryText}>{item.categoryName}</Text>
               </View>
 
@@ -179,24 +192,25 @@ const BookingsScreen = () => {
                   <Text style={styles.detailLabel}>Duration</Text>
                   <Text style={styles.detailValue}>{item.dateRange}</Text>
                 </View>
-                <View style={styles.detailCol}>
+                <View style={[styles.detailCol, styles.detailColRight]}>
                   <Text style={styles.detailLabel}>Budget</Text>
                   <Text style={[styles.detailValue, styles.budgetValue]}>{item.budget}</Text>
                 </View>
               </View>
             </View>
 
+            {/* Actions */}
             {item.status === "Pending" && (
               <View style={styles.actionsRow}>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.rejectBtn]}
+                  style={styles.rejectBtn}
                   activeOpacity={0.8}
                   onPress={() => handleReject(item.id, item.buyerName)}
                 >
-                  <Text style={styles.rejectBtnText}>Reject</Text>
+                  <Text style={styles.rejectBtnText}>Decline</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionBtn, styles.acceptBtn]}
+                  style={styles.acceptBtn}
                   activeOpacity={0.8}
                   onPress={() => handleAccept(item.id, item.buyerName)}
                 >
@@ -219,89 +233,108 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 10 : hp("6%"),
   },
+
+  // ── Header
   header: {
-    paddingHorizontal: wp("5%"),
-    paddingBottom: hp("1.5%"),
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: wp("6%"),
+    fontSize: 22,
     fontWeight: "800",
     color: colors.textPrimary,
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: wp("3.2%"),
+    fontSize: 13,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: 3,
   },
-  tabsContainer: {
+
+  // ── Tabs
+  tabsWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  tabsTrack: {
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.divider,
     borderRadius: 14,
     padding: 4,
-    marginHorizontal: wp("5%"),
-    marginVertical: hp("1.5%"),
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: hp("1.2%"),
+    paddingVertical: 10,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "transparent",
   },
   activeTabBtn: {
     backgroundColor: colors.white,
-    shadowColor: colors.shadow,
+    shadowColor: "#111827",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   tabText: {
-    fontSize: wp("2.8%"),
+    fontSize: 11,
     fontWeight: "700",
     color: colors.textSecondary,
   },
   activeTabText: {
-    color: colors.primary,
+    color: colors.textPrimary,
   },
+
+  // ── List
   listContent: {
-    paddingHorizontal: wp("5%"),
-    paddingTop: hp("1%"),
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: hp("15%"),
-    gap: hp("2%"),
+    gap: 12,
   },
+
+  // ── Card
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: colors.white,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: wp("4.5%"),
-    shadowColor: colors.shadow,
+    padding: 16,
+    shadowColor: "#111827",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 2,
   },
   cardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
+  },
+  iconBlock: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
   },
   buyerInfo: {
     flex: 1,
   },
   buyerLabel: {
-    fontSize: wp("2.5%"),
-    color: colors.textSecondary,
-    textTransform: "uppercase",
-    fontWeight: "600",
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: "700",
+    letterSpacing: 0.8,
     marginBottom: 2,
   },
   buyerName: {
-    fontSize: wp("3.6%"),
+    fontSize: 14,
     fontWeight: "700",
     color: colors.textPrimary,
+    letterSpacing: -0.1,
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -309,110 +342,122 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   statusText: {
-    fontSize: wp("2.5%"),
+    fontSize: 11,
     fontWeight: "700",
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginVertical: hp("1.5%"),
+    backgroundColor: colors.divider,
+    marginVertical: 14,
   },
   cardBody: {
-    gap: 6,
+    gap: 8,
   },
   adName: {
-    fontSize: wp("3.8%"),
-    fontWeight: "800",
+    fontSize: 14,
+    fontWeight: "700",
     color: colors.textPrimary,
+    letterSpacing: -0.1,
   },
-  infoRow: {
+  categoryRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  iconWrapper: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
+    gap: 5,
   },
   categoryText: {
-    fontSize: wp("2.8%"),
+    fontSize: 12,
     fontWeight: "600",
     color: colors.textSecondary,
   },
   detailsGrid: {
     flexDirection: "row",
-    marginTop: hp("1%"),
-    gap: wp("5%"),
+    marginTop: 4,
+    gap: 16,
   },
   detailCol: {
     flex: 1,
   },
+  detailColRight: {
+    alignItems: "flex-end",
+  },
   detailLabel: {
-    fontSize: wp("2.6%"),
-    color: colors.textSecondary,
-    marginBottom: 2,
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    marginBottom: 3,
   },
   detailValue: {
-    fontSize: wp("2.8%"),
+    fontSize: 12,
     fontWeight: "600",
     color: colors.textPrimary,
   },
   budgetValue: {
-    color: colors.primary,
+    color: colors.textPrimary,
     fontWeight: "800",
-    fontSize: wp("3.2%"),
+    fontSize: 15,
   },
+
+  // ── Actions
   actionsRow: {
     flexDirection: "row",
-    marginTop: hp("2%"),
-    gap: wp("3%"),
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: hp("1.2%"),
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
+    gap: 10,
+    marginTop: 14,
   },
   rejectBtn: {
-    backgroundColor: colors.white,
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
   },
   rejectBtnText: {
-    fontSize: wp("3.2%"),
+    fontSize: 13,
     fontWeight: "700",
     color: colors.textPrimary,
   },
   acceptBtn: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    flex: 2,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.button,
+    justifyContent: "center",
+    alignItems: "center",
   },
   acceptBtnText: {
-    fontSize: wp("3.2%"),
+    fontSize: 13,
     fontWeight: "700",
     color: colors.white,
   },
+
+  // ── Empty
   emptyContainer: {
     alignItems: "center",
+    paddingTop: hp("10%"),
+    paddingHorizontal: 40,
+  },
+  emptyIconBg: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: colors.divider,
     justifyContent: "center",
-    paddingHorizontal: wp("10%"),
-    paddingTop: hp("8%"),
+    alignItems: "center",
+    marginBottom: 16,
   },
   emptyTitle: {
-    fontSize: wp("4.5%"),
+    fontSize: 17,
     fontWeight: "700",
     color: colors.textPrimary,
-    marginTop: hp("2%"),
-    marginBottom: hp("1%"),
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: wp("3.5%"),
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: wp("5%"),
+    lineHeight: 20,
   },
 });

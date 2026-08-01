@@ -13,18 +13,20 @@ const commonError = (error) => {
   throw new Error(error.message || "Something went wrong");
 };
 
-// ================= LOGIN =================
-
-const LoginApi = async (email, password) => {
+const LoginApi = async (email, password, role) => {
   try {
     const response = await api.post("/auth/login", {
       email,
       password,
+      role,
     });
 
-    await SecureStore.setItemAsync("accessToken", response.data.accessToken);
-
-    await SecureStore.setItemAsync("refreshToken", response.data.refreshToken);
+    if (response.data?.accessToken) {
+      await SecureStore.setItemAsync("accessToken", response.data.accessToken);
+    }
+    if (response.data?.refreshToken) {
+      await SecureStore.setItemAsync("refreshToken", response.data.refreshToken);
+    }
 
     return response.data;
   } catch (error) {
@@ -32,15 +34,21 @@ const LoginApi = async (email, password) => {
   }
 };
 
-// ================= REGISTER =================
-
-const RegisterApi = async (username, email, password) => {
+const RegisterApi = async (username, email, password, role) => {
   try {
     const response = await api.post("/auth/register", {
       username,
       email,
       password,
+      role,
     });
+
+    if (response.data?.accessToken) {
+      await SecureStore.setItemAsync("accessToken", response.data.accessToken);
+    }
+    if (response.data?.refreshToken) {
+      await SecureStore.setItemAsync("refreshToken", response.data.refreshToken);
+    }
 
     return response.data;
   } catch (error) {
@@ -48,35 +56,14 @@ const RegisterApi = async (username, email, password) => {
   }
 };
 
-// ================= PROFILE SETUP =================
-
-const profileSetupApi = async (
-  firstname,
-  surname,
-  mobileNumber,
-  city,
-  state,
-  bio,
-  profileimage,
-) => {
+const profileSetupApi = async (profileData) => {
   try {
-    const response = await api.post("/auth/profile", {
-      firstname,
-      surname,
-      mobileNumber,
-      city,
-      state,
-      bio,
-      profileimage,
-    });
-
+    const response = await api.put("/auth/profile", profileData);
     return response.data;
   } catch (error) {
     commonError(error);
   }
 };
-
-// ================= VERIFY USER OTP =================
 
 const verifyUser = async (email, otp) => {
   try {
@@ -85,9 +72,12 @@ const verifyUser = async (email, otp) => {
       otp,
     });
 
-    await SecureStore.setItemAsync("accessToken", response.data.accessToken);
-
-    await SecureStore.setItemAsync("refreshToken", response.data.refreshToken);
+    if (response.data?.accessToken) {
+      await SecureStore.setItemAsync("accessToken", response.data.accessToken);
+    }
+    if (response.data?.refreshToken) {
+      await SecureStore.setItemAsync("refreshToken", response.data.refreshToken);
+    }
 
     return response.data;
   } catch (error) {
@@ -95,11 +85,9 @@ const verifyUser = async (email, otp) => {
   }
 };
 
-// ================= FORGOT PASSWORD =================
-
 const forgotPasswordApi = async (email) => {
   try {
-    const response = await api.post("/auth/forget-password", {
+    const response = await api.post("/auth/forgot-password", {
       email,
     });
 
@@ -108,8 +96,6 @@ const forgotPasswordApi = async (email) => {
     commonError(error);
   }
 };
-
-// ================= VERIFY FORGOT PASSWORD OTP =================
 
 const verifyOtp = async (email, otp) => {
   try {
@@ -118,17 +104,31 @@ const verifyOtp = async (email, otp) => {
       otp,
     });
 
+    if (response.data?.accessToken) {
+      await SecureStore.setItemAsync("accessToken", response.data.accessToken);
+    }
+
     return response.data;
   } catch (error) {
     commonError(error);
   }
 };
 
-// ================= USER INFO =================
+const newPasswordApi = async (password) => {
+  try {
+    const response = await api.put("/auth/new-password", {
+      password,
+    });
+
+    return response.data;
+  } catch (error) {
+    commonError(error);
+  }
+};
 
 const userInfo = async () => {
   try {
-    const response = await api.get("/me");
+    const response = await api.get("/auth/me");
 
     return response.data;
   } catch (error) {
@@ -136,13 +136,15 @@ const userInfo = async () => {
   }
 };
 
-// ================= LOGOUT =================
-
 const logoutApi = async () => {
-  await SecureStore.deleteItemAsync("accessToken");
+  try {
+    await api.patch("/auth/logout");
+  } catch (e) {
+  } finally {
+    await SecureStore.deleteItemAsync("accessToken");
+    await SecureStore.deleteItemAsync("refreshToken");
+  }
 };
-
-// ================= EXPORTS =================
 
 export {
   LoginApi,
@@ -151,6 +153,9 @@ export {
   verifyUser,
   forgotPasswordApi,
   verifyOtp,
+  newPasswordApi,
   userInfo,
   logoutApi,
 };
+
+export default null;

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-native-responsive-screen";
 import colors from "../../../Theme/colors";
+import { newPasswordApi } from "../Api/userApi";
 
 const NewPasswordScreen = () => {
   const router = useRouter();
@@ -42,10 +43,15 @@ const NewPasswordScreen = () => {
       return;
     }
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await newPasswordApi(password.trim());
       setShowSuccessModal(true);
-    }, 500);
+    } catch (error) {
+      setErrorMessage(error.response?.data?.message || error.message);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSuccessModalClose = () => {
@@ -61,7 +67,6 @@ const NewPasswordScreen = () => {
         enableOnAndroid={true}
         extraScrollHeight={20}
       >
-        {/* Header Back Button */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -72,7 +77,6 @@ const NewPasswordScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Title Area */}
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>New Password</Text>
           <Text style={styles.subtitleText}>
@@ -80,9 +84,7 @@ const NewPasswordScreen = () => {
           </Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
-          {/* Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>New Password</Text>
             <View style={styles.passwordWrapper}>
@@ -109,7 +111,6 @@ const NewPasswordScreen = () => {
             </View>
           </View>
 
-          {/* Confirm Password Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Confirm Password</Text>
             <View style={styles.passwordWrapper}>
@@ -137,7 +138,6 @@ const NewPasswordScreen = () => {
           </View>
         </View>
 
-        {/* Primary Action Button */}
         <TouchableOpacity
           style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
           onPress={handleUpdatePassword}
@@ -150,7 +150,6 @@ const NewPasswordScreen = () => {
         </TouchableOpacity>
       </KeyboardAwareScrollView>
 
-      {/* Success Modal */}
       <Modal
         visible={showSuccessModal}
         transparent={true}
@@ -175,7 +174,6 @@ const NewPasswordScreen = () => {
         </View>
       </Modal>
 
-      {/* Error Modal */}
       <Modal
         visible={showErrorModal}
         transparent={true}

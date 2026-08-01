@@ -6,7 +6,6 @@ import connectDB from "./Config/Database.js";
 import userRoutes from "./Routes/userRoute.js";
 import router from "./Routes/userRoute.js";
 import bannerrouter from "./Routes/bannerRoute.js";
-import popularAdsrouter from "./Routes/popularAdsRoute.js";
 import adspace_router from "./Routes/adspaceRoutes.js";
 dotenv.config();
 
@@ -18,7 +17,6 @@ app.use(express.json());
 
 app.use("/auth",router)
 app.use("/banner",bannerrouter)
-app.use("/popularAds", popularAdsrouter)
 app.use("/adspaces",adspace_router)
 const port = process.env.PORT;
 
